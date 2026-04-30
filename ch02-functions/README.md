@@ -102,7 +102,41 @@ async run(key: string, fn: () => Promise<void>): Promise<void>
 
 ---
 
-## 5. async / await
+## 5. Promise — 나중에 완료되는 작업
+
+`Promise<T>`는 "지금 당장 값이 없고, 나중에 T 타입 값이 완성될 것"을 나타내는 타입이다.
+
+```typescript
+// 지금 당장 number를 주지 않고, 나중에 number를 줄 것을 약속
+function fetchBalance(address: string): Promise<number> { ... }
+
+const p = fetchBalance('0xAAA');  // p의 타입: Promise<number>
+                                   // 아직 숫자가 아님 — 약속 상태
+```
+
+Promise가 필요한 이유: DB 조회, API 호출, 파일 읽기 등은 시간이 걸린다. 기다리는 동안 다른 일을 할 수 있도록 "나중에 줄게"라는 약속 객체를 먼저 반환하는 것.
+
+Promise 상태 3가지:
+- **pending**: 아직 완료 안 됨
+- **fulfilled**: 완료, 값 있음
+- **rejected**: 실패, 에러 있음
+
+```typescript
+// Promise<void> — 완료만 알려주고 반환값 없음
+async function saveToDB(): Promise<void> { ... }
+
+// Promise<string> — 완료되면 string을 반환
+async function getName(): Promise<string> { ... }
+
+// Promise<number[]> — 완료되면 number 배열 반환
+async function getScores(): Promise<number[]> { ... }
+```
+
+강의 코드에서 `Promise<void>`가 가장 많이 나온다 — "처리만 하고 값은 안 줌" 패턴.
+
+---
+
+## 6. async / await
 
 ```typescript
 async function fetchBalance(address: string): Promise<number> {
@@ -168,6 +202,8 @@ async function getData(): Promise<string> {  // OK
 ## 체크리스트
 
 - [ ] `=>` 보고 화살표 함수라고 인식한다
+- [ ] `Promise<T>`가 "나중에 T를 주겠다는 약속"임을 설명할 수 있다
+- [ ] `Promise<void>` / `Promise<number>` / `Promise<string>` 차이를 안다
 - [ ] `async function foo(): Promise<T>` 형태를 읽을 수 있다
 - [ ] `?:` (선택적)과 `= 기본값` 차이를 설명할 수 있다
 - [ ] `array.filter(p => 조건)` 패턴이 뭘 하는지 설명할 수 있다
