@@ -88,6 +88,35 @@ if (typeof u === 'string') {
 
 ---
 
+## 5. bigint — 블록체인 필수 타입
+
+`number`는 2⁵³ 이상의 정수를 정확히 표현하지 못한다. 토큰 ID나 금액처럼 큰 정수를 다루는 블록체인 코드에서는 `bigint`를 쓴다.
+
+```typescript
+const tokenId = 1234567890123456789n;   // 숫자 뒤에 n → bigint 리터럴
+const amount  = 50_000_000n;            // _ 는 가독성용 구분자, 값에 영향 없음
+const fee     = BigInt('1000000000000000');  // 문자열에서 변환
+```
+
+연산할 때 양쪽이 모두 `bigint`여야 한다:
+
+```typescript
+const total = amount + fee;    // OK: bigint + bigint
+const half  = amount / 2n;    // OK: 나누는 수도 2n (bigint)
+const wrong = amount + 1;     // 에러: bigint + number 혼용 불가
+```
+
+로그 출력이나 DB 저장 시 문자열로 변환:
+
+```typescript
+const s = tokenId.toString();   // '1234567890123456789'
+const s = String(amount);       // '50000000'
+```
+
+강의 코드에서 `bigint`가 보이는 곳: 토큰 ID 계산, 이체 금액, 보유 한도, EIP-191 서명값 등.
+
+---
+
 ## 자주 하는 실수
 
 **실수 1 — 잘못된 타입 할당**
@@ -103,9 +132,22 @@ function parse(input: unknown) { ... }  // 이렇게 써야 안전
 
 ---
 
+## 자주 하는 실수 (bigint)
+
+**실수 — number와 혼용**
+```typescript
+const amount = 100n;
+const fee = 5;             // number
+const total = amount + fee; // 에러: 혼용 불가
+const total = amount + BigInt(fee);  // OK
+```
+
+---
+
 ## 체크리스트
 
 - [ ] `const`와 `let`의 차이를 설명할 수 있다
 - [ ] `: string`, `: number[]` 같은 어노테이션을 읽을 수 있다
 - [ ] `any`가 왜 위험한지 설명할 수 있다
 - [ ] `unknown`을 쓸 때 왜 타입 검사가 필요한지 설명할 수 있다
+- [ ] `50_000_000n`이 bigint 리터럴임을 알고, number와 혼용할 수 없다는 것을 안다

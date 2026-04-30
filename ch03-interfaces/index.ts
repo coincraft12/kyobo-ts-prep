@@ -63,6 +63,41 @@ const mockProcessor: EventProcessor = {
   },
 };
 
+// 8. Map<K, V> — 타입 안전한 key-value 저장소
+// 강의 코드에서 idempotency 키 관리, 정책 저장 등에 사용
+
+const balanceMap = new Map<string, bigint>();          // key: string, value: bigint
+
+balanceMap.set('0xAAA', 1000n);
+balanceMap.set('0xBBB', 500n);
+
+const bal = balanceMap.get('0xAAA');                   // bigint | undefined
+const safe = balanceMap.get('0xAAA') ?? 0n;            // undefined면 0n
+
+console.log('has 0xAAA:', balanceMap.has('0xAAA'));    // true
+console.log('has 0xCCC:', balanceMap.has('0xCCC'));    // false
+
+balanceMap.delete('0xBBB');
+
+// 순회
+for (const [addr, amount] of balanceMap) {
+  console.log(`${addr}: ${amount}`);
+}
+
+// 강의 패턴 — 정책 캐시 (IdempotencyGuard 등)
+class IdempotencyGuard {
+  private readonly store = new Map<string, boolean>();
+
+  async run(key: string, fn: () => Promise<void>): Promise<void> {
+    if (this.store.has(key)) {
+      console.log(`중복 실행 차단: ${key}`);
+      return;
+    }
+    this.store.set(key, true);
+    await fn();
+  }
+}
+
 // ─── 실행 확인 ───────────────────────────────────────────────────────────────
 async function main() {
   console.log('=== CH03 인터페이스와 타입 ===');
@@ -91,6 +126,13 @@ async function main() {
   if (result.ok) {
     console.log('mint request id:', result.data.id);
   }
+
+  // Map
+  console.log('balanceMap get 0xAAA:', safe);
+
+  const guard = new IdempotencyGuard();
+  await guard.run('mint:token-1', async () => { console.log('실행됨'); });
+  await guard.run('mint:token-1', async () => { console.log('이건 안 실행됨'); });
 }
 
 main();

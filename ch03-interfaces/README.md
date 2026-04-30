@@ -174,6 +174,39 @@ type Result<T> = { ok: true; data: T }        // 제네릭 + union
 
 ---
 
+## 8. Map\<K, V\> — 타입 안전한 key-value 저장소
+
+일반 객체(`{}`)와 달리 키를 동적으로 관리할 때 쓴다. 강의 코드에서 idempotency 키 관리, 정책 캐시 등에 등장.
+
+```typescript
+const store = new Map<string, bigint>();
+
+store.set('0xAAA', 1000n);          // 추가/수정
+store.get('0xAAA');                  // bigint | undefined  ← undefined 가능
+store.has('0xAAA');                  // boolean
+store.delete('0xAAA');               // 삭제
+store.size;                          // 개수
+```
+
+**객체와 결정적 차이**: `.get()`은 항상 `T | undefined`를 반환한다. 값이 있다고 확신해도 TS는 모른다.
+
+```typescript
+const bal = store.get('0xAAA');      // bigint | undefined
+bal + 100n;                          // 에러: undefined일 수 있음
+
+const bal = store.get('0xAAA') ?? 0n;  // OK: 없으면 0n으로 처리
+const bal = store.get('0xAAA')!;        // OK: 있다고 단언 (확실할 때만)
+```
+
+순회:
+```typescript
+for (const [key, value] of store) {
+  console.log(key, value);
+}
+```
+
+---
+
 ## 자주 하는 실수
 
 **실수 1 — optional과 union 혼동**
@@ -194,6 +227,17 @@ const map: Record<TxStatus, string> = {
 
 ---
 
+**실수 3 — Map을 객체처럼 접근**
+```typescript
+const store = new Map<string, number>();
+store.set('key', 1);
+
+store['key'];        // undefined (Map은 이렇게 못 씀)
+store.get('key');    // 1 (올바른 방법)
+```
+
+---
+
 ## 체크리스트
 
 - [ ] interface 선언을 보고 어떤 객체가 만족하는지 알 수 있다
@@ -202,3 +246,4 @@ const map: Record<TxStatus, string> = {
 - [ ] 문자열 리터럴 union으로 상태값을 표현하는 이유를 설명할 수 있다
 - [ ] `Record<string, string>`의 의미를 설명할 수 있다
 - [ ] 메서드 시그니처 `foo(x: T): Promise<U>`를 한국어로 풀이할 수 있다
+- [ ] `Map<K, V>`에서 `.get()`이 `T | undefined`를 반환하는 이유를 안다
