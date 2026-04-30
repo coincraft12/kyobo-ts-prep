@@ -1,0 +1,19 @@
+{
+  "name": "ts-study",
+  "version": "1.0.0",
+  "scripts": {
+    "ch01": "ts-node ch01-variables/index.ts",
+    "ch02": "ts-node ch02-functions/index.ts",
+    "ch03": "ts-node ch03-interfaces/index.ts",
+    "ch04": "ts-node ch04-classes/index.ts",
+    "ch05": "ts-node ch05-async-error/index.ts",
+    "ch06": "ts-node ch06-modern-syntax/index.ts",
+    "ch07": "ts-node ch07-generics/index.ts",
+    "ch08": "ts-node ch08-utility-types/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.0",
+    "@types/node": "^20.0.0"
+  }
+}
