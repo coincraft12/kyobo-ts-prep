@@ -181,6 +181,83 @@ function greet(name: string): string {
 
 ---
 
+---
+
+## 생소한 문법 해설
+
+### `get size(): number` — getter (접근자 프로퍼티)
+
+```typescript
+class RetryQueue<T> {
+  private items: Array<{ item: T; attempts: number }> = [];
+
+  get size(): number {     // 메서드처럼 정의하지만
+    return this.items.length;
+  }
+}
+
+const queue = new RetryQueue<string>();
+queue.size;  // () 없이 프로퍼티처럼 접근
+```
+
+`get`을 붙이면 호출할 때 괄호 없이 `queue.size`처럼 쓸 수 있다.  
+내부 상태를 외부에 노출하되 직접 수정은 막을 때 유용하다 (`private items`는 숨기면서 `size`만 공개).
+
+### `[...this.store.values()]` — Map을 배열로 변환
+
+```typescript
+async findAll(): Promise<T[]> {
+  return [...this.store.values()];
+}
+```
+
+- `this.store.values()` — `Map`의 모든 값을 순서대로 반환하는 **이터러블(iterable)** 객체 (배열이 아님)
+- `[...이터러블]` — spread로 펼쳐서 일반 배열로 변환
+
+`Array.from(this.store.values())`와 동일하다. 이터러블을 배열이 필요한 곳에 넘길 때 자주 사용하는 패턴.
+
+### `<T extends HasId & HasTimestamp>` — 교차 타입 제약
+
+```typescript
+function getLatest<T extends HasId & HasTimestamp>(items: T[]): T | undefined {
+```
+
+- `HasId & HasTimestamp` — 교차 타입(intersection). "두 인터페이스를 모두 만족하는 타입"
+- T는 `id: string` **과** `createdAt: Date` 둘 다 가져야 한다
+
+```typescript
+interface HasId       { id: string; }
+interface HasTimestamp { createdAt: Date; }
+
+// 두 조건을 모두 만족하는 타입만 넘길 수 있음
+getLatest([{ id: 'a', createdAt: new Date() }]);  // OK
+getLatest([{ id: 'a' }]);                          // 에러: createdAt 없음
+```
+
+### `items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]`
+
+```typescript
+return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+```
+
+- `.sort(비교함수)` — 비교함수가 **음수** 반환 → a가 b 앞. **양수** → b가 a 앞.
+- `b.getTime() - a.getTime()` — 새로운 날짜(`b`)가 앞에 오도록 내림차순 정렬
+- `[0]` — 정렬 후 첫 번째 요소 (= 가장 최신)
+
+`Date.getTime()`은 1970년 1월 1일 기준 밀리초를 반환한다. 날짜끼리 빼면 시간 차이가 나온다.
+
+### `private store = new Map<string, T>()` — 필드 즉시 초기화
+
+```typescript
+class InMemoryRepository<T extends { id: string }> {
+  private store = new Map<string, T>();
+```
+
+클래스 제네릭 `T`를 필드 타입에 바로 사용할 수 있다.  
+생성자 없이도 필드 선언 시점에 초기화할 수 있으며, 클래스 인스턴스마다 독립된 Map이 생성된다.
+
+---
+
 ## 체크리스트
 
 - [ ] `<T>`가 "타입 자리 표시자"라는 것을 안다
@@ -188,3 +265,5 @@ function greet(name: string): string {
 - [ ] `<T extends { id: string }>`가 T에 id 필드를 요구하는 제약임을 안다
 - [ ] `Repository<MintRequest>`처럼 구체 타입을 채워서 쓰는 방식을 안다
 - [ ] `retryWithBackoff<T>(fn: () => Promise<T>): Promise<T>` 를 한국어로 풀이할 수 있다
+- [ ] `get size()` getter와 일반 메서드의 차이를 설명할 수 있다
+- [ ] `[...this.store.values()]`가 이터러블을 배열로 변환하는 이유를 안다

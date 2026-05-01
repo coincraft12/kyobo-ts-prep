@@ -212,6 +212,81 @@ export class NFTIssuedProcessor implements EventProcessor {
 
 ---
 
+---
+
+## 생소한 문법 해설
+
+### `const { tokenId, toAddress } = message.fields as Record<string, string>`
+
+```typescript
+async process(message: StreamMessage): Promise<void> {
+  const { tokenId, toAddress } = message.fields as Record<string, string>;
+```
+
+두 가지 문법이 합쳐져 있다:
+
+1. **`as Record<string, string>`** — 타입 단언. `message.fields`의 실제 타입이 이미 `Record<string, string>`인데, 구조 분해 직전에 명시적으로 타입을 알려주는 것이다.
+2. **`const { tokenId, toAddress } = ...`** — 객체 구조 분해. `message.fields['tokenId']`, `message.fields['toAddress']`를 각각 변수로 꺼내는 축약 문법이다.
+
+풀어 쓰면:
+```typescript
+const tokenId   = (message.fields as Record<string, string>)['tokenId'];
+const toAddress = (message.fields as Record<string, string>)['toAddress'];
+```
+
+### 생성자 단축 문법 — `constructor(private readonly ...)` 자세히
+
+```typescript
+// 단축 전 (명시적)
+class TxService {
+  private readonly ledger: LedgerService;
+
+  constructor(ledger: LedgerService) {
+    this.ledger = ledger;   // ① 선언  ② 할당
+  }
+}
+
+// 단축 후 (동일 결과)
+class TxService {
+  constructor(
+    private readonly ledger: LedgerService,  // ① + ② 한 번에
+  ) {}
+}
+```
+
+`private readonly`를 **생성자 매개변수 앞에** 붙이면 TypeScript가 자동으로:
+1. `this.ledger: LedgerService` 필드를 선언하고  
+2. `this.ledger = ledger` 할당을 생성자 본문에 삽입한다.
+
+강의 코드에서 이 패턴이 나오면 "외부에서 의존성을 받아 내부에 저장한다"고 읽으면 된다.
+
+### `if (processor.eventTypes.includes(msg.fields['eventType']))` 패턴
+
+```typescript
+if (processor.eventTypes.includes(msg.fields['eventType'])) {
+  await processor.process(msg);
+}
+```
+
+- `msg.fields['eventType']` — `Record<string, string>` 객체에서 키로 값을 꺼냄. `msg.fields.eventType`과 동일하지만 키가 동적일 때 대괄호 표기법을 쓴다.
+- `.includes(값)` — 배열에 해당 값이 있으면 `true`.
+- 결합하면: "이 processor가 처리할 이벤트 타입 목록에 메시지의 이벤트 타입이 포함되어 있는가?"
+
+### `await super.process(message)` — 부모 메서드 호출
+
+```typescript
+class AuditProcessor extends BaseProcessor {
+  async process(message: StreamMessage): Promise<void> {
+    await super.process(message);  // 부모 클래스의 process 실행
+    console.log('감사 로그 기록');
+  }
+}
+```
+
+`super.메서드명()`으로 부모 클래스의 메서드를 호출한다. 부모 메서드가 `async`이므로 `await`을 붙여야 완료를 기다릴 수 있다.
+
+---
+
 ## 체크리스트
 
 - [ ] `private readonly`가 생성자 매개변수에 붙으면 자동으로 필드가 생성됨을 안다

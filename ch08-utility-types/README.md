@@ -199,6 +199,98 @@ try {
 
 ---
 
+---
+
+## 생소한 문법 해설
+
+### `val is StreamMessage` — 타입 서술어(type predicate) 상세
+
+```typescript
+function isStreamMessage(val: unknown): val is StreamMessage {
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    'id' in val &&
+    'fields' in val
+  );
+}
+```
+
+반환 타입 `val is StreamMessage`의 의미: "이 함수가 `true`를 반환하면, 호출한 쪽에서 `val`을 `StreamMessage` 타입으로 취급해라"는 TS 컴파일러에 대한 약속이다.
+
+```typescript
+const rawData: unknown = { id: 'msg-001', fields: {} };
+
+if (isStreamMessage(rawData)) {
+  rawData.fields['eventType'];  // OK — TS가 StreamMessage로 인식
+} else {
+  rawData.fields;               // 에러 — 여기선 여전히 unknown
+}
+```
+
+`'id' in val` — `in` 연산자: 객체에 해당 키가 존재하는지 확인. `val !== null` 체크가 앞에 있어야 안전하다 (null도 `object`이기 때문).
+
+### `Awaited<ReturnType<typeof fetchUser>>` — 단계별 분해
+
+```typescript
+async function fetchUser() {
+  return { id: 'user-001', name: 'Sharon' };
+}
+
+type User = Awaited<ReturnType<typeof fetchUser>>;
+```
+
+**1단계 — `typeof fetchUser`**
+```typescript
+// 함수 자체의 타입
+() => Promise<{ id: string; name: string }>
+```
+
+**2단계 — `ReturnType<typeof fetchUser>`**
+```typescript
+// 함수의 반환 타입
+Promise<{ id: string; name: string }>
+```
+
+**3단계 — `Awaited<Promise<{ id: string; name: string }>>`**
+```typescript
+// Promise 안의 실제 값 타입
+{ id: string; name: string }
+```
+
+`async` 함수는 항상 `Promise<T>`를 반환한다. `Awaited`로 감싸면 `await`했을 때 얻는 타입 `T`를 뽑아낼 수 있다.
+
+### `{ ...data }` — spread로 Omit 타입 채우기
+
+```typescript
+type MintRequestCreate = Omit<MintRequest, 'id' | 'createdAt'>;
+
+function createRequest(data: MintRequestCreate): MintRequest {
+  return {
+    id: `req-${Date.now()}`,
+    createdAt: new Date(),
+    ...data,           // 나머지 필드를 그대로 복사
+  };
+}
+```
+
+`Omit<MintRequest, 'id' | 'createdAt'>`은 `id`와 `createdAt`을 제외한 나머지 필드다.  
+`...data`로 펼치면 `toAddress`, `tokenId` 등 나머지 필드가 자동으로 채워진다.
+
+### `'id' in val` — in 연산자
+
+```typescript
+typeof val === 'object' &&
+val !== null &&
+'id' in val &&      // val 객체에 'id' 키가 있는지 확인
+'fields' in val
+```
+
+`'키' in 객체` — 해당 키가 객체에 존재하면 `true`. 값이 `undefined`여도 키가 있으면 `true`다.  
+타입 가드에서 인터페이스의 필수 필드 존재 여부를 확인할 때 사용한다.
+
+---
+
 ## 유틸리티 타입 요약표
 
 | 유틸리티 | 설명 | 예 |
@@ -220,3 +312,5 @@ try {
 - [ ] `instanceof` 타입 가드가 catch 블록에서 왜 필요한지 안다
 - [ ] `typeof`로 타입을 좁히는 원리를 안다
 - [ ] `ReturnType<typeof fn>`이 뭘 하는지 설명할 수 있다
+- [ ] `val is T` 타입 서술어가 일반 boolean 반환과 무엇이 다른지 설명할 수 있다
+- [ ] `Awaited<ReturnType<typeof fn>>`을 단계별로 풀이할 수 있다

@@ -214,6 +214,88 @@ const x = Number('123');    // 실제 변환은 이렇게
 
 ---
 
+---
+
+## 생소한 문법 해설
+
+### `typeof ROLES[keyof typeof ROLES]` — 객체에서 union 타입 뽑기
+
+강의 코드에서 가장 낯선 패턴 중 하나. 단계별로 분해한다:
+
+```typescript
+const ROLES = {
+  MINTER: 'MINTER_ROLE',
+  PAUSER: 'PAUSER_ROLE',
+  ADMIN:  'DEFAULT_ADMIN_ROLE',
+} as const;
+```
+
+**1단계 — `typeof ROLES`**
+```typescript
+// 객체 값이 아니라 "타입"을 가져옴
+typeof ROLES
+// = { readonly MINTER: 'MINTER_ROLE'; readonly PAUSER: 'PAUSER_ROLE'; readonly ADMIN: 'DEFAULT_ADMIN_ROLE' }
+```
+
+**2단계 — `keyof typeof ROLES`**
+```typescript
+// 해당 타입의 키를 union으로 뽑음
+keyof typeof ROLES
+// = 'MINTER' | 'PAUSER' | 'ADMIN'
+```
+
+**3단계 — `typeof ROLES[keyof typeof ROLES]`**
+```typescript
+// 키 union으로 값들을 조회 → 값 union이 됨
+typeof ROLES['MINTER' | 'PAUSER' | 'ADMIN']
+// = 'MINTER_ROLE' | 'PAUSER_ROLE' | 'DEFAULT_ADMIN_ROLE'
+```
+
+결과:
+```typescript
+type Role = typeof ROLES[keyof typeof ROLES];
+// = 'MINTER_ROLE' | 'PAUSER_ROLE' | 'DEFAULT_ADMIN_ROLE'
+```
+
+왜 이렇게 쓰나: `ROLES` 객체에 항목을 추가하면 `Role` 타입도 자동으로 업데이트된다. 따로 타입을 관리하지 않아도 된다.
+
+### `as const` — 값과 타입을 동시에 고정
+
+```typescript
+// as const 없이
+const ROLES = { MINTER: 'MINTER_ROLE' };
+// ROLES.MINTER의 타입: string  (바뀔 수 있다고 판단)
+
+// as const 붙이면
+const ROLES = { MINTER: 'MINTER_ROLE' } as const;
+// ROLES.MINTER의 타입: 'MINTER_ROLE'  (리터럴 타입으로 고정)
+// ROLES 전체도 readonly — 수정 불가
+```
+
+`as const` 없이는 `typeof ROLES[keyof typeof ROLES]`가 그냥 `string`이 된다. 리터럴 union을 얻으려면 반드시 필요하다.
+
+### `parseInt(value ?? '0', 10)` — 두 번째 인수 10의 의미
+
+```typescript
+const retryCount = parseInt(message.fields['_retryCount'] ?? '0', 10);
+```
+
+`parseInt(문자열, 진수)` — 두 번째 인수는 몇 진법으로 해석할지다.
+- `10` = 10진수 (일반 숫자)
+- 생략하면 `'0x...'` 같은 문자열을 16진수로 해석하는 등 의도치 않은 결과가 나올 수 있다.
+- 항상 `10`을 명시하는 게 안전하다.
+
+### `process.env['PORT']` — 환경 변수 접근
+
+```typescript
+const port = process.env['PORT'] ?? '3000';
+```
+
+`process.env`는 Node.js에서 환경 변수 전체를 담은 `Record<string, string | undefined>` 객체다.  
+모든 값의 타입이 `string | undefined`이므로 `??`로 기본값을 반드시 처리해야 한다.
+
+---
+
 ## 체크리스트
 
 - [ ] `const { x, y } = obj` 와 `const { x: newName } = obj` 차이를 안다
@@ -222,3 +304,4 @@ const x = Number('123');    // 실제 변환은 이렇게
 - [ ] `...arr`가 context에 따라 spread/rest 두 가지 의미임을 안다
 - [ ] `as const`가 왜 필요한지 설명할 수 있다
 - [ ] `as`와 `!`를 언제 써야 하고 왜 남용하면 안 되는지 안다
+- [ ] `typeof ROLES[keyof typeof ROLES]` 패턴을 단계별로 설명할 수 있다

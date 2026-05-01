@@ -208,6 +208,95 @@ catch (err) {
 
 ---
 
+---
+
+## 생소한 문법 해설
+
+### `public readonly attempts` — 에러 생성자의 필드 단축
+
+```typescript
+class MaxRetriesExceededError extends Error {
+  constructor(public readonly attempts: number, cause?: Error) {
+    super(`최대 재시도 횟수 초과: ${attempts}회`);
+    this.name = 'MaxRetriesExceededError';
+    if (cause) this.cause = cause;
+  }
+}
+```
+
+`public readonly attempts`는 CH04에서 배운 **생성자 단축 문법**이 커스텀 에러에도 그대로 적용된 것이다.
+- `public` — 외부에서 `err.attempts`로 접근 가능
+- `readonly` — 생성 후 변경 불가
+- `extends Error`이므로 반드시 `super(메시지)`로 부모 생성자를 먼저 호출해야 한다
+
+`public readonly`를 붙이면 생성자 매개변수 → 필드 자동 생성. 안 붙이면 그냥 지역 변수.
+
+### `this.cause = cause` — Error.cause (Node 16.9+)
+
+```typescript
+if (cause) this.cause = cause;
+```
+
+`Error.cause`는 에러의 **원인**을 연결하는 표준 속성이다.
+```typescript
+try {
+  await db.save(data);
+} catch (dbErr) {
+  throw new MaxRetriesExceededError(3, dbErr as Error);
+  //                                     ↑ 원인 에러를 같이 넘김
+}
+
+// 나중에 원인 추적 가능
+console.log(err.cause);  // 원래 db 에러
+```
+
+에러를 감싸서 던질 때(wrap & rethrow) 원인 체인을 보존하는 데 사용한다.
+
+### `addresses[i]!` — 배열 인덱스 비-null 단언
+
+```typescript
+return results.map((result, i) => ({
+  address: addresses[i]!,
+  //                  ↑ "이 인덱스는 반드시 값이 있다"
+  balance: result.status === 'fulfilled' ? result.value : null,
+}));
+```
+
+`addresses[i]`의 타입은 `string | undefined` (배열 경계 밖일 수도 있으므로).  
+`!`를 붙이면 `undefined`를 제거하고 `string`으로 취급한다.  
+여기서는 `results`와 `addresses`가 같은 길이임이 보장되므로 안전하다.
+
+### `Promise.allSettled` 결과 타입 읽기
+
+```typescript
+const results = await Promise.allSettled([fetchA(), fetchB()]);
+// results[0]의 타입:
+//   { status: 'fulfilled'; value: number }
+// 또는
+//   { status: 'rejected'; reason: unknown }
+```
+
+`result.status`로 성공/실패를 구분한 뒤 각 분기에서 `value` 또는 `reason`에 접근한다:
+
+```typescript
+balance: result.status === 'fulfilled' ? result.value : null
+```
+
+`Promise.all`은 하나라도 실패하면 전체 reject. `Promise.allSettled`는 항상 모든 결과를 배열로 반환한다.
+
+### `baseDelayMs * Math.pow(2, attempt - 1)` — 지수 백오프 공식
+
+```
+attempt=1: 100 * 2^0 = 100ms
+attempt=2: 100 * 2^1 = 200ms
+attempt=3: 100 * 2^2 = 400ms
+```
+
+`Math.pow(base, exponent)` — base의 exponent 제곱. `2 ** (attempt - 1)`로 써도 동일하다.  
+재시도할수록 대기 시간이 두 배씩 늘어나 서버 부하를 줄인다.
+
+---
+
 ## 체크리스트
 
 - [ ] `Promise<T>`가 "나중에 T를 준다"는 의미임을 안다

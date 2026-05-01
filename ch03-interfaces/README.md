@@ -238,6 +238,63 @@ store.get('key');    // 1 (올바른 방법)
 
 ---
 
+---
+
+## 생소한 문법 해설
+
+### `for...of` + 구조 분해로 Map 순회
+
+```typescript
+const store = new Map<string, bigint>();
+store.set('0xAAA', 1000n);
+
+for (const [key, value] of store) {
+  console.log(key, value);
+}
+```
+
+`Map`을 `for...of`로 순회하면 각 요소가 `[키, 값]` 배열로 나온다.  
+`const [key, value] = ...` 구조 분해로 한 번에 두 변수를 꺼내는 것이다.  
+`const entry of store` 로 쓰면 `entry[0]`, `entry[1]`로 접근해야 해서 불편하다.
+
+### `?? 0n` — nullish 병합 연산자
+
+```typescript
+const bal = store.get('0xAAA') ?? 0n;
+```
+
+`.get()`은 키가 없으면 `undefined`를 반환한다. `??`는 왼쪽이 `null` 또는 `undefined`일 때만 오른쪽 값을 쓴다.  
+숫자 `0n`처럼 "빈 값처럼 보이지만 유효한 값"도 그대로 유지된다 (`||` 와의 차이 — CH06에서 상세 설명).
+
+### `async process(message) { ... }` — 메서드에서 async
+
+```typescript
+const mockProcessor: EventProcessor = {
+  eventTypes: ['NFT_ISSUED', 'NFT_BURNED'],
+  async process(message) {
+    const eventType = message.fields['eventType'] ?? '';
+    console.log(`처리 중: ${eventType}`);
+  },
+};
+```
+
+객체 리터럴 안의 메서드에도 `async`를 붙일 수 있다.  
+인터페이스 시그니처가 `Promise<void>`를 요구하기 때문에 `async`를 붙여 자동으로 Promise를 반환하게 한다.
+
+### `private readonly store = new Map<string, boolean>()`
+
+```typescript
+class IdempotencyGuard {
+  private readonly store = new Map<string, boolean>();
+  //               ↑ 필드 선언 + 즉시 초기화
+}
+```
+
+필드 선언과 초기값 할당을 생성자 밖에서 한 줄로 처리할 수 있다.  
+`private` = 클래스 밖에서 접근 불가, `readonly` = 재할당 불가, `= new Map<...>()` = 인스턴스 생성 시 자동 초기화.
+
+---
+
 ## 체크리스트
 
 - [ ] interface 선언을 보고 어떤 객체가 만족하는지 알 수 있다
