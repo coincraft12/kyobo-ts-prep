@@ -140,11 +140,15 @@ const url = `https://api.example.com/tx/${txHash}`;
 ## 5. as const — 리터럴 타입 고정
 
 ```typescript
-const CHAIN_TYPE = 'EVM';         // 타입: string (바뀔 수 있다고 판단)
+const CHAIN_TYPE = 'EVM';          // 타입: string (바뀔 수 있다고 판단)
 const CHAIN_TYPE = 'EVM' as const; // 타입: 'EVM' (이 값으로 고정)
 ```
 
-객체에 쓰면 모든 필드가 readonly가 되고 값도 리터럴 타입으로 고정:
+---
+
+### 객체에서 union 타입을 추출하는 패턴
+
+강의 코드에서 아래처럼 생긴 코드가 자주 나온다.
 
 ```typescript
 const ROLES = {
@@ -154,10 +158,179 @@ const ROLES = {
 
 type Role = typeof ROLES[keyof typeof ROLES];
 // = 'MINTER_ROLE' | 'PAUSER_ROLE'
-// ROLES 객체에서 union 타입을 뽑아내는 패턴
 ```
 
-왜 쓰나: enum 대신 사용 가능하고 런타임 값도 그대로 쓸 수 있어서.
+한 번에 이해하긴 어려우니 단계별로 분해한다.
+
+---
+
+#### 최종 목표
+
+```typescript
+type Role = 'MINTER_ROLE' | 'PAUSER_ROLE';
+```
+
+이런 union 타입을 만들고 싶다. 근데 직접 손으로 쓰면 ROLES 객체랑 따로 관리돼서 동기화가 깨진다.  
+그래서 **객체 하나로 값과 타입을 동시에 관리**하려는 게 목적.
+
+---
+
+#### 1단계: `as const`
+
+```typescript
+const ROLES = {
+  MINTER: 'MINTER_ROLE',
+  PAUSER: 'PAUSER_ROLE',
+} as const;
+```
+
+`as const` **없으면** TypeScript는 타입을 이렇게 추론한다:
+
+```typescript
+{
+  MINTER: string;  // ← 그냥 string
+  PAUSER: string;
+}
+```
+
+값이 `'MINTER_ROLE'`인 건 알지만 타입은 넓게 `string`으로 잡는다.  
+나중에 `ROLES.MINTER = '아무거나'`로 바꿀 수도 있다고 가정하기 때문.
+
+`as const` **있으면** 이렇게 추론한다:
+
+```typescript
+{
+  readonly MINTER: 'MINTER_ROLE';  // ← 리터럴 타입
+  readonly PAUSER: 'PAUSER_ROLE';
+}
+```
+
+- 값이 정확히 `'MINTER_ROLE'` 그 문자열로 고정됨 (literal type)
+- 모든 필드가 `readonly`가 됨 (수정 불가)
+
+> **한 줄 요약**: `as const`는 "이 값은 이 모양 그대로 영원히 고정"이라고 컴파일러에게 알리는 것.
+
+---
+
+#### 2단계: `typeof ROLES`
+
+```typescript
+type T = typeof ROLES;
+// = {
+//     readonly MINTER: 'MINTER_ROLE';
+//     readonly PAUSER: 'PAUSER_ROLE';
+//   }
+```
+
+`typeof`가 두 군데서 쓰인다는 점이 헷갈린다:
+
+| 위치 | 의미 |
+|---|---|
+| JavaScript 런타임 | `typeof x === 'string'` — 값의 타입을 문자열로 |
+| TypeScript 타입 자리 | `type T = typeof x` — 값으로부터 타입을 추출 |
+
+여기선 `type` 키워드 안에 있으니 TS의 `typeof`. "ROLES라는 변수의 타입이 뭐야?" 물어보는 것.
+
+---
+
+#### 3단계: `keyof typeof ROLES`
+
+```typescript
+type K = keyof typeof ROLES;
+// = 'MINTER' | 'PAUSER'
+```
+
+`keyof T` = T 타입의 **키들**을 union으로 뽑는다.
+
+```typescript
+// typeof ROLES =
+// { readonly MINTER: '...'; readonly PAUSER: '...' }
+//
+// keyof (그 타입) = 'MINTER' | 'PAUSER'
+```
+
+여기서 추출한 건 키 이름이지 값이 아니다. `'MINTER'`, `'PAUSER'`만 나온다.
+
+---
+
+#### 4단계: `typeof ROLES[keyof typeof ROLES]`
+
+```
+'MINTER' | 'PAUSER'           ← keyof typeof ROLES (키들)
+       ↓
+typeof ROLES[keyof typeof ROLES]
+       ↓
+'MINTER_ROLE' | 'PAUSER_ROLE' ← 각 키에 해당하는 값들
+```
+
+`T[K]` = 타입 T에서 키 K에 해당하는 값 타입을 꺼낸다.  
+K가 union이면 각 키의 값들을 모아 union으로 만든다.
+
+---
+
+#### 왜 이렇게까지 하나?
+
+**대안 1: 직접 쓰기**
+
+```typescript
+const ROLES = { MINTER: 'MINTER_ROLE', PAUSER: 'PAUSER_ROLE' };
+type Role = 'MINTER_ROLE' | 'PAUSER_ROLE';
+```
+
+문제: ROLES에 `BURNER` 추가하면 `Role`도 수동으로 바꿔야 함. 까먹으면 버그.
+
+**대안 2: enum**
+
+```typescript
+enum Role { MINTER = 'MINTER_ROLE', PAUSER = 'PAUSER_ROLE' }
+```
+
+문제: TS enum은 런타임에 객체 추가 생성, tree-shaking 안 됨, 일반 string과 섞이는 문제 등 호불호 갈림. 요즘 TS 커뮤니티는 `as const` 패턴을 더 선호.
+
+**`as const` 패턴의 장점**
+
+```typescript
+const ROLES = {
+  MINTER: 'MINTER_ROLE',
+  PAUSER: 'PAUSER_ROLE',
+  BURNER: 'BURNER_ROLE',  // ← 여기만 추가하면
+} as const;
+
+type Role = typeof ROLES[keyof typeof ROLES];
+// 자동으로 'MINTER_ROLE' | 'PAUSER_ROLE' | 'BURNER_ROLE'
+```
+
+- 값과 타입이 하나의 진실 소스(single source of truth)
+- 런타임 객체로도 쓸 수 있고 (`ROLES.MINTER`)
+- 타입으로도 쓸 수 있음 (`function grant(role: Role)`)
+
+---
+
+#### 실전 사용
+
+```typescript
+function grantRole(role: Role) {
+  contract.grantRole(role, userAddress);
+}
+
+grantRole(ROLES.MINTER);   // ✅
+grantRole('MINTER_ROLE');  // ✅
+grantRole('아무거나');     // ❌ 컴파일 에러
+```
+
+---
+
+#### 한 줄 요약
+
+| 부분 | 의미 |
+|---|---|
+| `as const` | 값을 리터럴 타입으로 고정 |
+| `typeof ROLES` | 값에서 타입 추출 |
+| `keyof T` | 객체 타입의 키들을 union으로 |
+| `T[K]` | 키로 값 타입 꺼내기 |
+| 합치면 | 객체의 모든 값을 union 타입으로 |
+
+스마트 컨트랙트의 role 관리, 이벤트 이름, 상태 머신의 state 같이 "정해진 문자열 집합"을 다룰 때 거의 표준 패턴이다.
 
 ---
 
