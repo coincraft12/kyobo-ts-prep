@@ -124,6 +124,27 @@ await Promise.all(
 );
 ```
 
+### 구체 예시  
+
+**메시지 종류: 'NFT_ISSUED'**
+
+processors = [
+  발행처리자       { eventTypes: ['NFT_ISSUED'] }
+  감사로그처리자    { eventTypes: ['NFT_ISSUED', 'NFT_BURNED'] }
+  알림발송처리자    { eventTypes: ['NFT_ISSUED'] }
+  소각처리자       { eventTypes: ['NFT_BURNED'] }
+]
+
+① filter 후 → [발행처리자, 감사로그처리자, 알림발송처리자]
+              (소각처리자는 NFT_ISSUED 처리 못 해서 빠짐)
+
+② map 후 → [
+    발행처리자.process(msg),       ← 원장 +1
+    감사로그처리자.process(msg),    ← 로그 기록
+    알림발송처리자.process(msg),    ← 사용자 알림
+  ]
+  (셋 다 동시에 실행 시작)
+
 ---
 
 ## 5. extends — 클래스 상속
