@@ -2,6 +2,7 @@
   "name": "ts-study",
   "version": "1.0.0",
   "scripts": {
+    "ch00": "ts-node ch00-intro/index.ts",
     "ch01": "ts-node ch01-variables/index.ts",
     "ch02": "ts-node ch02-functions/index.ts",
     "ch03": "ts-node ch03-interfaces/index.ts",
